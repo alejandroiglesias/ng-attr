@@ -9,25 +9,29 @@
   function ngAttrDirective($parse) {
     return {
       restrict: 'A',
-      link: function(scope, element, attrs) {
-        var el = element[0];
+      link: {
+        pre: function (scope, element, attrs) {
+          var el = element[0];
 
-        scope.$watch(attrs.ngAttr, setAttributes, true);
+          attrs.$observe('ngAttr', setAttributes);
 
-        function setAttributes() {
-          var attrsAndValueRefs = $parse(attrs.ngAttr)(scope) || {};
+          function setAttributes() {
+            var attrsAndValueRefs = $parse(attrs.ngAttr)(scope) || {};
 
-          Object
-            .keys(attrsAndValueRefs)
-            .filter(isAttrValid)
-            .forEach(function(attr) {
-              el.setAttribute(attr, attrsAndValueRefs[attr]);
-            });
-
-          function isAttrValid(attr) {
-            return typeof attrsAndValueRefs[attr] === 'string' &&
-              attrsAndValueRefs[attr] !== el.getAttribute(attr);
+            Object
+              .keys(attrsAndValueRefs)
+              .filter(function(attr) { return attrsAndValueRefs[attr] !== el.getAttribute(attr); })
+              .forEach(function(attr) {
+                if (attrsAndValueRefs[attr]) {
+                  // Set attribute
+                  attrs.$set(attrs.$normalize(attr), attrsAndValueRefs[attr]);
+                } else if (Boolean(el.getAttribute(attr))) {
+                  // Unset attribute
+                  attrs.$set(attrs.$normalize(attr), null);
+                }
+              });
           }
+          setAttributes();
         }
       }
     };
